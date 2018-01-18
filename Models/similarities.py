@@ -2,14 +2,15 @@
 # Python 2.7 версии
 
 from threading import Thread
-import os
-import urllib2
+from scipy.spatial.distance import cosine
 
 
-class similarities(Thread):
-    def __init__(self, queue):
+class Similarities(Thread):
+    def __init__(self, queue, data_ibs, data_germany):
         Thread.__init__(self)
         self.queue = queue
+        self.data_ibs = data_ibs
+        self.data_germany = data_germany
         self.raw = []
 
     def run(self):
@@ -17,12 +18,9 @@ class similarities(Thread):
             i = self.queue.get()
 
             # Скачиваем файл
-            self.download_file(i)
+            for j in range(0, len(self.data_ibs.columns)):
+                # Fill in placeholder with cosine similarities
+                self.data_ibs.ix[i, j] = 1 - cosine(self.data_germany.ix[:, i], self.data_germany.ix[:, j])
 
             # Отправляем сигнал о том, что задача завершена
             self.queue.task_done()
-
-    def download_file(self, i):
-        for j in range(0, len(data_ibs.columns)):
-            # Fill in placeholder with cosine similarities
-            data_ibs.ix[i, j] = 1 - cosine(data_germany.ix[:, i], data_germany.ix[:, j])

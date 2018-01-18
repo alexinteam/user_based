@@ -5,7 +5,40 @@ import os
 import urllib2
 from threading import Thread
 import Queue
-from Models.similarities import similarities
+
+
+class Downloader(Thread):
+    """
+    Пример многопоточной загрузки файлов из интернета
+    """
+
+    def __init__(self, queue):
+        """Инициализация потока"""
+        Thread.__init__(self)
+        self.queue = queue
+
+    def run(self):
+        # Получаем url из очереди
+            url = self.queue.get()
+
+            # Скачиваем файл
+            self.download_file(url)
+
+            # Отправляем сигнал о том, что задача завершена
+            self.queue.task_done()
+
+    def download_file(self, url):
+        """Скачиваем файл"""
+        handle = urllib2.urlopen(url)
+        fname = os.path.basename(url)
+
+        with open(fname, "wb") as f:
+            while True:
+                chunk = handle.read(1024)
+                if not chunk:
+                    break
+                f.write(chunk)
+
 
 def main(urls):
     """
@@ -14,22 +47,17 @@ def main(urls):
     queue = Queue.Queue()
 
     # Запускаем потом и очередь
-    for i in range(5):
-        t = similarities(queue)
+    for p in range(50):
+        t = Downloader(queue)
         t.setDaemon(True)
         t.start()
 
-    a = []
     # Даем очереди нужные нам ссылки для скачивания
     for url in urls:
         queue.put(url)
-        index = urls.index(url)
-        a.append(index)
 
     # Ждем завершения работы очереди
     queue.join()
-
-    return a
 
 
 if __name__ == "__main__":
@@ -39,4 +67,4 @@ if __name__ == "__main__":
             "http://www.irs.gov/pub/irs-pdf/f1040es.pdf",
             "http://www.irs.gov/pub/irs-pdf/f1040sb.pdf"]
 
-    print main(urls)
+    main(urls)

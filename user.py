@@ -2,10 +2,12 @@
 # Python 2.7 версии
 
 import pandas as pd
-import time
-from Methods.similarity import main as SimilarityFunction
+from scipy.spatial.distance import cosine
+from multiprocessing.dummy import Pool as ThreadPool
+from threading import Thread
+from timeit import default_timer as timer
 
-print time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+start = timer()
 
 # --- Read Data --- #
 data = pd.read_csv('data1.csv')
@@ -19,8 +21,32 @@ data_ibs = pd.DataFrame(index=data_germany.columns,columns=data_germany.columns)
 
 # Lets fill in those empty spaces with cosine similarities
 # Loop through the columns
-data_ibs = SimilarityFunction(data_ibs, data_germany)
+# for i in range(0,len(data_ibs.columns)):
+#     # Loop through the columns for each column
+#     for j in range(0,len(data_ibs.columns)):
+#         # Fill in placeholder with cosine similarities
+#         data_ibs.ix[i, j] = 1-cosine(data_germany.ix[:, i], data_germany.ix[:, j])
+
+
+class MyThread(Thread):
+    def __init__(self, ii):
+        Thread.__init__(self)
+        self.i = ii
+
+    def run(self):
+        for jj in range(0, len(data_ibs.columns)):
+            # Fill in placeholder with cosine similarities
+            data_ibs.ix[self.i, jj] = 1-cosine(data_germany.ix[:, self.i], data_germany.ix[:, jj])
+
+for i in range(0,len(data_ibs.columns)):
+    # Loop through the columns for each column
+    my_thread = MyThread(i)
+    my_thread.start()
+
 print data_ibs
+end = timer()
+
+print("Time taken:", end-start)
 
 # # Create a placeholder items for closes neighbours to an item
 # data_neighbours = pd.DataFrame(index=data_ibs.columns,columns=[range(1,11)])
