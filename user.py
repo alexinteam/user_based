@@ -1,13 +1,9 @@
-
-# --- Import Libraries --- #
+# -*- coding: utf-8 -*-
+# Python 2.7 версии
 
 import pandas as pd
-from scipy.spatial.distance import cosine
 import time
-import os
-import urllib2
-from threading import Thread
-import Queue
+from Methods.similarity import main as SimilarityFunction
 
 print time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
 
@@ -21,42 +17,11 @@ data_germany = data.drop('user', 1)
 # Create a placeholder dataframe listing item vs. item
 data_ibs = pd.DataFrame(index=data_germany.columns,columns=data_germany.columns)
 
-
-def main(urls):
-    """
-    Запускаем программу
-    """
-    queue = Queue.Queue()
-
-    # Запускаем потом и очередь
-    for i in range(50):
-        t = Downloader(queue)
-        t.setDaemon(True)
-        t.start()
-
-    # Даем очереди нужные нам ссылки для скачивания
-    for url in urls:
-        queue.put(url)
-
-    # Ждем завершения работы очереди
-    queue.join()
-
 # Lets fill in those empty spaces with cosine similarities
 # Loop through the columns
-for i in range(0,len(data_ibs.columns)) :
-    # Loop through the columns for each column
-    urls = ["http://www.irs.gov/pub/irs-pdf/f1040.pdf",
-            "http://www.irs.gov/pub/irs-pdf/f1040a.pdf",
-            "http://www.irs.gov/pub/irs-pdf/f1040ez.pdf",
-            "http://www.irs.gov/pub/irs-pdf/f1040es.pdf",
-            "http://www.irs.gov/pub/irs-pdf/f1040sb.pdf"]
-
-    main(urls)
-    for j in range(0,len(data_ibs.columns)) :
-      # Fill in placeholder with cosine similarities
-      data_ibs.ix[i, j] = 1-cosine(data_germany.ix[:, i], data_germany.ix[:, j])
-
+data_ibs = SimilarityFunction(data_ibs, data_germany)
 print data_ibs
+
 # # Create a placeholder items for closes neighbours to an item
 # data_neighbours = pd.DataFrame(index=data_ibs.columns,columns=[range(1,11)])
 #
@@ -101,37 +66,6 @@ print data_ibs
 #
 # # Print a sample
 # print data_recommend.ix[:, :6]
-print time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+# print time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
 
 
-class Downloader(Thread):
-    """
-    Пример многопоточной загрузки файлов из интернета
-    """
-
-    def __init__(self, queue):
-        """Инициализация потока"""
-        Thread.__init__(self)
-        self.queue = queue
-
-    def run(self):
-        # Получаем url из очереди
-            url = self.queue.get()
-
-            # Скачиваем файл
-            self.download_file(url)
-
-            # Отправляем сигнал о том, что задача завершена
-            self.queue.task_done()
-
-    def download_file(self, url):
-        """Скачиваем файл"""
-        handle = urllib2.urlopen(url)
-        fname = os.path.basename(url)
-
-        with open(fname, "wb") as f:
-            while True:
-                chunk = handle.read(1024)
-                if not chunk:
-                    break
-                f.write(chunk)
