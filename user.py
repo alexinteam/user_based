@@ -3,14 +3,13 @@
 
 import pandas as pd
 from scipy.spatial.distance import cosine
-from multiprocessing.dummy import Pool as ThreadPool
-from threading import Thread
+import threading
 from timeit import default_timer as timer
 
 start = timer()
 
 # --- Read Data --- #
-data = pd.read_csv('data1.csv')
+data = pd.read_csv('data.csv')
 
 # --- Start Item Based Recommendations --- #
 # Drop any column named "user"
@@ -28,22 +27,51 @@ data_ibs = pd.DataFrame(index=data_germany.columns,columns=data_germany.columns)
 #         data_ibs.ix[i, j] = 1-cosine(data_germany.ix[:, i], data_germany.ix[:, j])
 
 
-class MyThread(Thread):
-    def __init__(self, ii):
-        Thread.__init__(self)
-        self.i = ii
+def similaritiesHandler(args, event_for_wait, event_for_set):
+    event_for_wait.wait() # wait for event
+    event_for_wait.clear() # clean event for future
+    cos(*args)
+    event_for_set.set() # set event for neighbor thread
 
-    def run(self):
-        for jj in range(0, len(data_ibs.columns)):
-            # Fill in placeholder with cosine similarities
-            data_ibs.ix[self.i, jj] = 1-cosine(data_germany.ix[:, self.i], data_germany.ix[:, jj])
 
-for i in range(0,len(data_ibs.columns)):
-    # Loop through the columns for each column
-    my_thread = MyThread(i)
-    my_thread.start()
+def cos(array,start,stop):
+    for ii in range(start, stop):
+        data_ibs.ix[array[ii][0], array[ii][1]] = 1 - cosine(data_germany.ix[:, array[ii][0]], data_germany.ix[:, array[ii][1]])
+    return
 
-print data_ibs
+
+b=[]
+for i in range(0, len(data_ibs.columns)):
+    for j in range(0, len(data_ibs.columns)):
+        b.append((i,j))
+
+
+# init events
+e1 = threading.Event()
+e2 = threading.Event()
+e3 = threading.Event()
+e4 = threading.Event()
+
+# init threads
+t1 = threading.Thread(target=similaritiesHandler, args=((b,0,10000), e1, e2))
+t2 = threading.Thread(target=similaritiesHandler, args=((b,10000,20000), e2, e3))
+t3 = threading.Thread(target=similaritiesHandler, args=((b,20000,30000), e3, e4))
+t4 = threading.Thread(target=similaritiesHandler, args=((b,30000,40000), e4, e1))
+
+# start threads
+t1.start()
+t2.start()
+t3.start()
+t4.start()
+
+e1.set() # initiate the first event
+
+# join threads to the main thread
+t1.join()
+t2.join()
+t3.join()
+t4.start()
+# print data_ibs
 end = timer()
 
 print("Time taken:", end-start)

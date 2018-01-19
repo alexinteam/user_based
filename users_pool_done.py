@@ -1,13 +1,16 @@
-
-# --- Import Libraries --- #
+# -*- coding: utf-8 -*-
+# Python 2.7 версии
 
 import pandas as pd
 from scipy.spatial.distance import cosine
-import time
+from multiprocessing.dummy import Pool
+from functools import partial
+from multiprocessing import Process
+from threading import Thread
 from timeit import default_timer as timer
 
-print time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
 start = timer()
+
 # --- Read Data --- #
 data = pd.read_csv('data.csv')
 
@@ -20,17 +23,37 @@ data_ibs = pd.DataFrame(index=data_germany.columns,columns=data_germany.columns)
 
 # Lets fill in those empty spaces with cosine similarities
 # Loop through the columns
-# avg 486 secs
-for i in range(0,len(data_ibs.columns)):
-    # Loop through the columns for each column
-    for j in range(0,len(data_ibs.columns)) :
-      # Fill in placeholder with cosine similarities
-      data_ibs.ix[i, j] = 1-cosine(data_germany.ix[:, i], data_germany.ix[:, j])
+# for i in range(0,len(data_ibs.columns)):
+#     # Loop through the columns for each column
+#     for j in range(0,len(data_ibs.columns)):
+#         # Fill in placeholder with cosine similarities
+#         data_ibs.ix[i, j] = 1-cosine(data_germany.ix[:, i], data_germany.ix[:, j])
 
+
+def multi_run_wrapper(args):
+    return cos(*args)
+
+
+def cos(ii,jj):
+    data_ibs.ix[ii, jj] = 1 - cosine(data_germany.ix[:, ii], data_germany.ix[:, jj])
+    return
+
+#
+if __name__ == "__main__":
+    b=[]
+    for i in range(0, len(data_ibs.columns)):
+        for j in range(0, len(data_ibs.columns)):
+            b.append((i,j))
+
+    pool = Pool(8)
+    results = pool.map(multi_run_wrapper, b)
+    print results
+
+# print data_ibs
 end = timer()
 
 print("Time taken:", end-start)
-#
+
 # # Create a placeholder items for closes neighbours to an item
 # data_neighbours = pd.DataFrame(index=data_ibs.columns,columns=[range(1,11)])
 #
@@ -76,3 +99,5 @@ print("Time taken:", end-start)
 # # Print a sample
 # print data_recommend.ix[:, :6]
 # print time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+
+
