@@ -70,7 +70,7 @@ e1.set() # initiate the first event
 t1.join()
 t2.join()
 t3.join()
-t4.start()
+t4.join()
 # print data_ibs
 end = timer()
 
